@@ -7,7 +7,8 @@ import (
 type Post struct {
 	gorm.Model
 
-	BoardId int `gorm:"foreignkey:id;association_foreignkey:board_id;INDEX"`
-	Title string
+	BoardID int `sql:"index"`
+	Board Board `gorm:"foreignkey:BoardID;association_foreignkey:ID"`
+	Title string `gorm:"type:varchar(255)"`
 	Body string
 }

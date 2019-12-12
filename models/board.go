@@ -4,16 +4,16 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-type ReadPermissions int
+type ReadPermissions string
 type Board struct {
 	gorm.Model
 
 	Name string `gorm:"type:varchar(40);UNIQUE_INDEX"`
 	URL string `gorm:"type:varchar(40);UNIQUE_INDEX"`
-	ReadPermission int
+	ReadPermission string `gorm:"type:varchar(20)"`
 }
 
 const (
-	JJUNGS ReadPermissions = iota
-	PUBLIC
+	JJUNGS ReadPermissions = "JJUNGS"
+	PUBLIC ReadPermissions = "PUBLIC"
 )
