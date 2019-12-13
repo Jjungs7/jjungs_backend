@@ -1,20 +1,25 @@
 package main
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"jjungs_backend/routes"
 )
 
 func main() {
 	g := gin.Default()
-	g.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "hello",
-		})
-	})
-	g.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "bye",
-		})
-	})
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	g.Use(cors.New(config))
+	auth := g.Group("/auth")
+	posts := g.Group("/post")
+	boards := g.Group("/board")
+	comments := g.Group("/comment")
+
+	routes.AuthRegister(auth)
+	routes.PostRegister(posts)
+	routes.BoardRegister(boards)
+	routes.CommentRegister(comments)
 	g.Run()
 }
