@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/gin-gonic/gin/binding"
+	"github.com/gin-gonic/gin/binding"
 
 	"jjungs_backend/components/auth"
 )
@@ -22,15 +22,17 @@ func AuthRegister(router *gin.RouterGroup) {
 
 func AuthHandler(c *gin.Context) {
 	var input InputPW
-	if err := c.BindJSON(&input); err != nil {
-		panic(err)
+	if err := binding.JSON.Bind(c.Request, &input); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"error": "ERR500",
+		})
+		return
 	}
 
 	if input.PW != JJUNGS_PASSWORD {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "ERR401",
 		})
-
 		return
 	}
 
@@ -39,7 +41,6 @@ func AuthHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
 		})
-
 		return
 	}
 

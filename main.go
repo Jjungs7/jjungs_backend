@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -14,9 +13,13 @@ import (
 
 func main() {
 	g := gin.Default()
+
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
+	config.AllowHeaders = []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "Authorization"}
 	g.Use(cors.New(config))
+	g.Use(PreHandler)
+
 	admin := g.Group("/admin")
 	auth := g.Group("/auth")
 	boards := g.Group("/board")
@@ -33,8 +36,18 @@ func main() {
 	g.Run()
 }
 
+func PreHandler(c *gin.Context) {
+	authToken := c.GetHeader("Authorization")
+	if authToken != "" {
+		v, _ := auth.ValidateToken(strings.Split(authToken, " ")[1])
+		if v == "JJUNGS" {
+			c.Set("permissions", v)
+		}
+	}
+	c.Next()
+}
+
 func OnlyAdmin(c *gin.Context) {
-	fmt.Println("test")
 	authToken := c.GetHeader("Authorization")
 	if authToken == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
