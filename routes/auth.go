@@ -1,8 +1,7 @@
 package routes
 
 import (
-	"fmt"
-	"log"
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +13,7 @@ import (
 var JJUNGS_PASSWORD string
 
 type InputPW struct {
-	pw string `json:"pw"`
+	PW string `json:"pw"`
 }
 
 func AuthRegister(router *gin.RouterGroup) {
@@ -23,24 +22,28 @@ func AuthRegister(router *gin.RouterGroup) {
 
 func AuthHandler(c *gin.Context) {
 	var input InputPW
-	c.BindJSON(&input)
-	fmt.Println(input)
-	fmt.Println(c.Params)
-	fmt.Println(c.Keys)
+	if err := c.BindJSON(&input); err != nil {
+		panic(err)
+	}
 
-	if input.pw != JJUNGS_PASSWORD {
-		c.JSON(200, gin.H{
-			"message": "post",
+	if input.PW != JJUNGS_PASSWORD {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "ERR401",
 		})
 
 		return
 	}
 
-	token, err := auth.GenerateToken(input.pw)
+	token, err := auth.GenerateToken(input.PW)
 	if err != nil {
-		log.Fatal(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "ERR500",
+		})
+
+		return
 	}
-	c.JSON(200, gin.H{
+
+	c.JSON(http.StatusOK, gin.H{
 		"message": token,
 	})
 }

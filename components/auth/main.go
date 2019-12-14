@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -18,9 +19,9 @@ func GenerateToken(password string) (string, error) {
 	claim := AuthClaims {
 		password,
 		jwt.StandardClaims {
-			Issuer:    "",
-			IssuedAt:  0,
-			ExpiresAt: 0,
+			Issuer:    "jjungs",
+			IssuedAt:  time.Now().Unix(),
+			ExpiresAt: time.Now().Add(time.Hour*1 + time.Minute*30).Unix(),
 		},
 	}
 
@@ -45,12 +46,4 @@ func ValidateToken(tokenString string) (string, error) {
 
 func init() {
 	secret = []byte(os.Getenv("SECRET_KEY"))
-}
-
-func main() {
-	res, err := GenerateToken("IlBdBkm5893")
-	fmt.Println("Wow: " + res)
-	if err != nil {
-		fmt.Println(err)
-	}
 }
