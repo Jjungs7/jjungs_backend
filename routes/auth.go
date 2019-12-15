@@ -10,7 +10,7 @@ import (
 	"jjungs_backend/components/auth"
 )
 
-var JJUNGS_PASSWORD string
+var JjungsPassword string
 
 type InputPW struct {
 	PW string `json:"pw"`
@@ -29,7 +29,7 @@ func AuthHandler(c *gin.Context) {
 		return
 	}
 
-	if input.PW != JJUNGS_PASSWORD {
+	if input.PW != JjungsPassword {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "ERR401",
 		})
@@ -50,5 +50,5 @@ func AuthHandler(c *gin.Context) {
 }
 
 func init() {
-	JJUNGS_PASSWORD = os.Getenv("PASSWORD")
+	JjungsPassword = os.Getenv("PASSWORD")
 }
