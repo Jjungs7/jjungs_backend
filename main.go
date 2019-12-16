@@ -28,6 +28,14 @@ func main() {
 
 	admin.Use(OnlyAdmin)
 
+	// database.DB.Create(&models.Post{
+	// 	Model:   gorm.Model{},
+	// 	BoardID: 0,
+	// 	Board:   models.Board{},
+	// 	Title:   "",
+	// 	Body:    "",
+	// })
+
 	routes.AdminRegister(admin)
 	routes.AuthRegister(auth)
 	routes.BoardRegister(boards)

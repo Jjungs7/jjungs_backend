@@ -8,8 +8,8 @@ import (
 
 func BoardRegister(router *gin.RouterGroup) {
 	router.GET("", models.GetBoards)
-	router.GET("/:id", models.GetBoard)
+	router.GET("/", models.GetBoard)
 	router.POST("", models.CreateBoard)
-	router.PUT("/:id", models.UpdateBoard)
-	router.DELETE("/:id", models.DeleteBoard)
+	router.PUT("", models.UpdateBoard)
+	router.DELETE("", models.DeleteBoard)
 }

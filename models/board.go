@@ -3,7 +3,6 @@ package models
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,14 +19,12 @@ type Board struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt *time.Time
 }
-
 
 func GetBoards(c *gin.Context) {
 	var whereClause = ""
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		whereClause = " read_permission <> " + permissions.(string)
+		whereClause = " read_permission <> 'JJUNGS'"
 	}
 
 	var boards []Board
@@ -40,7 +37,7 @@ func GetBoards(c *gin.Context) {
 func GetBoard(c *gin.Context) {
 	var whereClause = ""
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		whereClause = " and read_permission <> " + permissions.(string)
+		whereClause = " and read_permission <> 'JJUNGS'"
 	}
 
 	var board Board
@@ -58,6 +55,7 @@ func GetBoard(c *gin.Context) {
 }
 
 type BoardInput struct {
+	ID int `json:"id"`
 	Name string `json:"name"`
 	URL string `json:"url"`
 	ReadPermission string `json:"read"`
@@ -114,20 +112,19 @@ func UpdateBoard(c *gin.Context) {
 		return
 	}
 
-	id, _ := strconv.Atoi(c.Param("id"))
-	var board Board
-	database.DB.First(&board, Board{ID: id})
-	fmt.Println(board)
-	if board.ID == 0 {
+	var boardInput BoardInput
+	if err := binding.JSON.Bind(c.Request, &boardInput); err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusOK, gin.H{
 			"error": "ERR400",
 		})
 		return
 	}
 
-	var boardInput BoardInput
-	if err := binding.JSON.Bind(c.Request, &boardInput); err != nil {
-		fmt.Println(err)
+	var board Board
+	database.DB.First(&board, Board{ID: boardInput.ID})
+	fmt.Println(board)
+	if board.ID == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"error": "ERR400",
 		})
@@ -167,9 +164,17 @@ func DeleteBoard(c *gin.Context) {
 		return
 	}
 
-	id, _ := strconv.Atoi(c.Param("id"))
+	var boardInput BoardInput
+	if err := binding.JSON.Bind(c.Request, &boardInput); err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusOK, gin.H{
+			"error": "ERR400",
+		})
+		return
+	}
+
 	var board Board
-	database.DB.First(&board, Board{ID: id})
+	database.DB.First(&board, Board{ID: boardInput.ID})
 	fmt.Println(board)
 	if board.ID == 0 {
 		c.JSON(http.StatusOK, gin.H{
@@ -178,7 +183,7 @@ func DeleteBoard(c *gin.Context) {
 		return
 	}
 
-	errs := database.DB.Delete(&Board{ID: id}).GetErrors()
+	errs := database.DB.Delete(&Board{ID: boardInput.ID}).GetErrors()
 	if len(errs) > 0 {
 		fmt.Println(errs)
 		c.JSON(http.StatusOK, gin.H{
@@ -186,6 +191,6 @@ func DeleteBoard(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"data": id,
+		"data": boardInput.ID,
 	})
 }
