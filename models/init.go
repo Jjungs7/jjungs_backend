@@ -6,8 +6,8 @@ import (
 
 func init() {
 	database.DB.AutoMigrate(
-		&Post{},
 		&Board{},
+		&Post{},
 		&Comment{},
 		&PostTag{},
 	)

@@ -35,22 +35,29 @@ func GetBoards(c *gin.Context) {
 }
 
 func GetBoard(c *gin.Context) {
+	type Posts struct {
+		Board Board
+		Posts []Post
+	}
+
 	var whereClause = ""
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
 		whereClause = " and read_permission <> 'JJUNGS'"
 	}
 
-	var board Board
+	var posts Posts
 	id := c.Param("id")
-	database.DB.First(&board, "boards.id=" + id + whereClause)
-	if board.Name == "" {
+	database.DB.First(&posts.Board, "boards.id=" + id + whereClause)
+	if posts.Board.Name == "" {
 		c.JSON(200, gin.H{
 			"data": nil,
 		})
 		return
 	}
+
+	database.DB.Order("id asc").Find(&posts.Posts, "posts.board_id=?", posts.Board.ID)
 	c.JSON(200, gin.H{
-		"data": board,
+		"data": posts,
 	})
 }
 
@@ -77,17 +84,20 @@ func CreateBoard(c *gin.Context) {
 		fmt.Println(err)
 		return
 	}
+
 	board := Board{
 		Name: input.Name,
 		URL: input.URL,
 		ReadPermission: input.ReadPermission,
 	}
+
 	if board.Name == "" || board.URL == "" || board.ReadPermission == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"error": "ERR400",
 		})
 		return
 	}
+
 	errs := database.DB.Save(&board).GetErrors()
 	if len(errs) > 0 {
 		c.JSON(http.StatusOK, gin.H{
@@ -98,9 +108,7 @@ func CreateBoard(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": []Board{
-			board,
-		},
+		"data": board,
 	})
 }
 
@@ -112,8 +120,8 @@ func UpdateBoard(c *gin.Context) {
 		return
 	}
 
-	var boardInput BoardInput
-	if err := binding.JSON.Bind(c.Request, &boardInput); err != nil {
+	var input BoardInput
+	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		fmt.Println(err)
 		c.JSON(http.StatusOK, gin.H{
 			"error": "ERR400",
@@ -122,7 +130,7 @@ func UpdateBoard(c *gin.Context) {
 	}
 
 	var board Board
-	database.DB.First(&board, Board{ID: boardInput.ID})
+	database.DB.First(&board, Board{ID: input.ID})
 	fmt.Println(board)
 	if board.ID == 0 {
 		c.JSON(http.StatusOK, gin.H{
@@ -131,16 +139,16 @@ func UpdateBoard(c *gin.Context) {
 		return
 	}
 
-	if boardInput.Name != "" {
-		board.Name = boardInput.Name
+	if input.Name != "" {
+		board.Name = input.Name
 	}
 
-	if boardInput.URL != "" {
-		board.URL = boardInput.URL
+	if input.URL != "" {
+		board.URL = input.URL
 	}
 
-	if boardInput.ReadPermission != "" {
-		board.ReadPermission = boardInput.ReadPermission
+	if input.ReadPermission != "" {
+		board.ReadPermission = input.ReadPermission
 	}
 
 	errs := database.DB.Save(&board).GetErrors()
@@ -167,16 +175,6 @@ func DeleteBoard(c *gin.Context) {
 	var boardInput BoardInput
 	if err := binding.JSON.Bind(c.Request, &boardInput); err != nil {
 		fmt.Println(err)
-		c.JSON(http.StatusOK, gin.H{
-			"error": "ERR400",
-		})
-		return
-	}
-
-	var board Board
-	database.DB.First(&board, Board{ID: boardInput.ID})
-	fmt.Println(board)
-	if board.ID == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"error": "ERR400",
 		})
