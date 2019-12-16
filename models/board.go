@@ -25,17 +25,27 @@ type Board struct {
 
 
 func GetBoards(c *gin.Context) {
+	var whereClause = ""
+	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
+		whereClause = " read_permission <> " + permissions.(string)
+	}
+
 	var boards []Board
-	database.DB.Order("id asc").Find(&boards)
+	database.DB.Order("id asc").Find(&boards, whereClause)
 	c.JSON(200, gin.H{
 		"data": boards,
 	})
 }
 
 func GetBoard(c *gin.Context) {
+	var whereClause = ""
+	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
+		whereClause = " and read_permission <> " + permissions.(string)
+	}
+
 	var board Board
-	id, _ := strconv.Atoi(c.Param("id"))
-	database.DB.First(&board, Board{ID: id})
+	id := c.Param("id")
+	database.DB.First(&board, "boards.id=" + id + whereClause)
 	if board.Name == "" {
 		c.JSON(200, gin.H{
 			"data": nil,
@@ -97,6 +107,13 @@ func CreateBoard(c *gin.Context) {
 }
 
 func UpdateBoard(c *gin.Context) {
+	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "ERR403",
+		})
+		return
+	}
+
 	id, _ := strconv.Atoi(c.Param("id"))
 	var board Board
 	database.DB.First(&board, Board{ID: id})
@@ -143,6 +160,13 @@ func UpdateBoard(c *gin.Context) {
 }
 
 func DeleteBoard(c *gin.Context) {
+	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "ERR403",
+		})
+		return
+	}
+
 	id, _ := strconv.Atoi(c.Param("id"))
 	var board Board
 	database.DB.First(&board, Board{ID: id})
