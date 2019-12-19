@@ -3,6 +3,9 @@ package models
 import (
 	"fmt"
 	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +21,7 @@ type Post struct {
 	Board *Board `gorm:"foreignkey:BoardID;association_foreignkey:ID"`
 	Title string `gorm:"type:varchar(255);not null"`
 	Body string
+	PostTags []string `gorm:"-"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -25,9 +29,20 @@ type Post struct {
 }
 
 type PostTag struct {
-	PostID int `gorm:"INDEX"`
-	Post *Post `gorm:"foreignkey:PostID;association_foreignkey:ID;"`
-	Keyword string `gorm:"type:varchar(20)"`
+	PostID int `gorm:"unique_index:uix_post_tags_post_id_keyword"`
+	Keyword string `gorm:"type:varchar(20);unique_index:uix_post_tags_post_id_keyword"`
+}
+
+func getPostTags(PostID int) ([]string) {
+	var tags []string
+	rows, _ := database.DB.Table("post_tags").Select("post_tags.keyword").Joins("inner join posts on post_tags.post_id=posts.id").Rows()
+	defer rows.Close()
+	for rows.Next() {
+		var tag string
+		rows.Scan(&tag)
+		tags = append(tags, tag)
+	}
+	return tags
 }
 
 func GetPosts(c *gin.Context) {
@@ -36,6 +51,7 @@ func GetPosts(c *gin.Context) {
 	for idx, _ := range posts {
 		posts[idx].Board = new(Board)
 		database.DB.First(&posts[idx].Board, "boards.id=?", posts[idx].BoardID)
+		posts[idx].PostTags = getPostTags(posts[idx].ID)
 	}
 
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
@@ -70,6 +86,7 @@ func GetPost(c *gin.Context) {
 		})
 		return
 	}
+	post.PostTags = getPostTags(post.ID)
 
 	c.JSON(200, gin.H{
 		"data": post,
@@ -81,6 +98,45 @@ type PostInput struct {
 	BoardID int `json:"boardId"`
 	Title string `json:"title"`
 	Body string `json:"body"`
+	Tags string `json:"tags"`
+}
+
+func deleteTagsExcluding(postID int, excludingTags []string) {
+	if len(excludingTags) == 0 {
+		return
+	}
+	var tags string
+	for idx, tag := range excludingTags {
+		if idx != 0 {
+			tags += ","
+		}
+		tags += "'"+ tag +"'"
+	}
+	database.DB.Exec("DELETE FROM post_tags WHERE post_id=? AND keyword NOT IN (" + tags + ")", strconv.Itoa(postID))
+}
+
+func insertIgnoreDuplicateTags(postID int, tags []string) {
+	if len(tags) == 0 {
+		return
+	}
+	var tagsConverted string
+	stringPostID := strconv.Itoa(postID)
+	for _, tag := range tags {
+		if len(tagsConverted) > 0 {
+			tagsConverted += ","
+		}
+
+		tagsConverted += "(" + stringPostID + ",'" + tag + "')"
+	}
+	database.DB.Exec("INSERT INTO post_tags VALUES" + tagsConverted + " ON CONFLICT(post_id, keyword) DO NOTHING")
+}
+
+func getWellFormedTag(str string) string {
+	leadingTrailingWhtspc := regexp.MustCompile(`^[\s\p{Zs}]+|[\s\p{Zs}]+$`)
+	insideWhtspc := regexp.MustCompile(`[\s\p{Zs}]{2,}`)
+	str = leadingTrailingWhtspc.ReplaceAllString(str, "")
+	str = insideWhtspc.ReplaceAllString(str, " ")
+	return str
 }
 
 func CreatePost(c *gin.Context) {
@@ -93,9 +149,10 @@ func CreatePost(c *gin.Context) {
 
 	var input PostInput
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
 		})
+		fmt.Println(input)
 		fmt.Println(err)
 		return
 	}
@@ -107,7 +164,7 @@ func CreatePost(c *gin.Context) {
 	}
 
 	if post.Title == "" || post.BoardID <= 0 {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		return
@@ -115,13 +172,20 @@ func CreatePost(c *gin.Context) {
 
 	errs := database.DB.Save(&post).GetErrors()
 	if len(errs) > 0 {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		fmt.Println(errs)
 		return
 	}
 
+	if input.Tags != "" {
+		post.PostTags = strings.Split(getWellFormedTag(input.Tags), " ")
+		insertIgnoreDuplicateTags(post.ID, post.PostTags)
+	}
+
+	post.Board = new(Board)
+	database.DB.First(&post.Board, "boards.id=?", post.BoardID)
 	c.JSON(http.StatusOK, gin.H{
 		"data": post,
 	})
@@ -163,6 +227,12 @@ func UpdatePost(c *gin.Context) {
 
 	if input.Body != "" {
 		post.Body = input.Body
+	}
+
+	if input.Tags != "" {
+		post.PostTags = strings.Split(getWellFormedTag(input.Tags), " ")
+		deleteTagsExcluding(post.ID, post.PostTags)
+		insertIgnoreDuplicateTags(post.ID, post.PostTags)
 	}
 
 	errs := database.DB.Save(&post).GetErrors()
@@ -208,6 +278,7 @@ func DeletePost(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
 		})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"data": postInput.ID,
