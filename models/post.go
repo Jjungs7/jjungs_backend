@@ -24,6 +24,12 @@ type Post struct {
 	DeletedAt *time.Time
 }
 
+type PostTag struct {
+	PostID int `gorm:"INDEX"`
+	Post *Post `gorm:"foreignkey:PostID;association_foreignkey:ID;"`
+	Keyword string `gorm:"type:varchar(20)"`
+}
+
 func GetPosts(c *gin.Context) {
 	var posts []Post
 	database.DB.Order("id asc").Find(&posts)
@@ -60,7 +66,7 @@ func GetPost(c *gin.Context) {
 	database.DB.First(&post.Board, "boards.id=?", post.BoardID)
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" && post.Board.ReadPermission == "JJUNGS" {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR403",
+			"error": "ERR401",
 		})
 		return
 	}
@@ -80,7 +86,7 @@ type PostInput struct {
 func CreatePost(c *gin.Context) {
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR403",
+			"error": "ERR401",
 		})
 		return
 	}
@@ -124,15 +130,14 @@ func CreatePost(c *gin.Context) {
 func UpdatePost(c *gin.Context) {
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR403",
+			"error": "ERR401",
 		})
 		return
 	}
 
 	var input PostInput
-	fmt.Println(input.ID)
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
 		})
 		fmt.Println(err)
@@ -141,8 +146,8 @@ func UpdatePost(c *gin.Context) {
 
 	var post Post
 	database.DB.First(&post, "posts.id=?", input.ID)
-	if post.ID == 0 {
-		c.JSON(http.StatusOK, gin.H{
+	if post.ID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		return
@@ -162,7 +167,7 @@ func UpdatePost(c *gin.Context) {
 
 	errs := database.DB.Save(&post).GetErrors()
 	if len(errs) > 0 {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		fmt.Println(errs)
@@ -176,7 +181,7 @@ func UpdatePost(c *gin.Context) {
 func DeletePost(c *gin.Context) {
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR403",
+			"error": "ERR401",
 		})
 		return
 	}
@@ -184,8 +189,15 @@ func DeletePost(c *gin.Context) {
 	var postInput PostInput
 	if err := binding.JSON.Bind(c.Request, &postInput); err != nil {
 		fmt.Println(err)
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+		})
+		return
+	}
+
+	if postInput.ID <= 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"data": postInput.ID,
 		})
 		return
 	}
@@ -193,7 +205,7 @@ func DeletePost(c *gin.Context) {
 	errs := database.DB.Delete(&Post{ID: postInput.ID}).GetErrors()
 	if len(errs) > 0 {
 		fmt.Println(errs)
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
 		})
 	}

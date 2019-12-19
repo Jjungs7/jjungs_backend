@@ -71,14 +71,14 @@ type BoardInput struct {
 func CreateBoard(c *gin.Context) {
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR403",
+			"error": "ERR401",
 		})
 		return
 	}
 
 	var input BoardInput
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
 		})
 		fmt.Println(err)
@@ -92,7 +92,7 @@ func CreateBoard(c *gin.Context) {
 	}
 
 	if board.Name == "" || board.URL == "" || board.ReadPermission == "" {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		return
@@ -100,7 +100,7 @@ func CreateBoard(c *gin.Context) {
 
 	errs := database.DB.Save(&board).GetErrors()
 	if len(errs) > 0 {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		fmt.Println(errs)
@@ -115,7 +115,7 @@ func CreateBoard(c *gin.Context) {
 func UpdateBoard(c *gin.Context) {
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR403",
+			"error": "ERR401",
 		})
 		return
 	}
@@ -123,7 +123,7 @@ func UpdateBoard(c *gin.Context) {
 	var input BoardInput
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		fmt.Println(err)
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		return
@@ -131,9 +131,8 @@ func UpdateBoard(c *gin.Context) {
 
 	var board Board
 	database.DB.First(&board, Board{ID: input.ID})
-	fmt.Println(board)
-	if board.ID == 0 {
-		c.JSON(http.StatusOK, gin.H{
+	if board.ID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		return
@@ -154,7 +153,7 @@ func UpdateBoard(c *gin.Context) {
 	errs := database.DB.Save(&board).GetErrors()
 	if len(errs) > 0 {
 		fmt.Println(errs)
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
 		})
 		return
@@ -167,7 +166,7 @@ func UpdateBoard(c *gin.Context) {
 func DeleteBoard(c *gin.Context) {
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR403",
+			"error": "ERR401",
 		})
 		return
 	}
@@ -175,8 +174,15 @@ func DeleteBoard(c *gin.Context) {
 	var boardInput BoardInput
 	if err := binding.JSON.Bind(c.Request, &boardInput); err != nil {
 		fmt.Println(err)
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+		})
+		return
+	}
+
+	if boardInput.ID <= 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"data": boardInput.ID,
 		})
 		return
 	}
@@ -184,7 +190,7 @@ func DeleteBoard(c *gin.Context) {
 	errs := database.DB.Delete(&Board{ID: boardInput.ID}).GetErrors()
 	if len(errs) > 0 {
 		fmt.Println(errs)
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
 		})
 	}
