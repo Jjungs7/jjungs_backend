@@ -46,8 +46,8 @@ func GetBoard(c *gin.Context) {
 	}
 
 	var posts Posts
-	id := c.Param("id")
-	database.DB.First(&posts.Board, "boards.id=" + id + whereClause)
+	name := c.Param("name")
+	database.DB.First(&posts.Board, "boards.url='" + name + "'" + whereClause)
 	if posts.Board.Name == "" {
 		c.JSON(200, gin.H{
 			"data": nil,
@@ -55,7 +55,7 @@ func GetBoard(c *gin.Context) {
 		return
 	}
 
-	database.DB.Order("id asc").Find(&posts.Posts, "posts.board_id=?", posts.Board.ID)
+	database.DB.Order("id desc").Find(&posts.Posts, "posts.board_id=?", posts.Board.ID)
 	c.JSON(200, gin.H{
 		"data": posts,
 	})

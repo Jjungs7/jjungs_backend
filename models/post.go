@@ -21,6 +21,7 @@ type Post struct {
 	Board *Board `gorm:"foreignkey:BoardID;association_foreignkey:ID"`
 	Title string `gorm:"type:varchar(255);not null"`
 	Body string
+	Description string
 	PostTags []string `gorm:"-"`
 
 	CreatedAt time.Time
@@ -35,7 +36,7 @@ type PostTag struct {
 
 func getPostTags(PostID int) ([]string) {
 	var tags []string
-	rows, _ := database.DB.Table("post_tags").Select("post_tags.keyword").Joins("inner join posts on post_tags.post_id=posts.id").Rows()
+	rows, _ := database.DB.Table("post_tags").Select("post_tags.keyword").Joins("inner join posts on post_tags.post_id=posts.id").Where("posts.id="+strconv.Itoa(PostID)).Rows()
 	defer rows.Close()
 	for rows.Next() {
 		var tag string
@@ -47,7 +48,7 @@ func getPostTags(PostID int) ([]string) {
 
 func GetPosts(c *gin.Context) {
 	var posts []Post
-	database.DB.Order("id asc").Find(&posts)
+	database.DB.Order("id desc").Find(&posts)
 	for idx, _ := range posts {
 		posts[idx].Board = new(Board)
 		database.DB.First(&posts[idx].Board, "boards.id=?", posts[idx].BoardID)
@@ -99,6 +100,7 @@ type PostInput struct {
 	Title string `json:"title"`
 	Body string `json:"body"`
 	Tags string `json:"tags"`
+	Description string `json:"description"`
 }
 
 func deleteTagsExcluding(postID int, excludingTags []string) {
@@ -161,6 +163,7 @@ func CreatePost(c *gin.Context) {
 		Title: input.Title,
 		Body: input.Body,
 		BoardID: input.BoardID,
+		Description: input.Description,
 	}
 
 	if post.Title == "" || post.BoardID <= 0 {
