@@ -46,7 +46,7 @@ func getPostTags(PostID int) ([]string) {
 	return tags
 }
 
-func GetPosts(c *gin.Context) {
+func getAll(isAdmin bool, from int, to int) []Post {
 	var posts []Post
 	database.DB.Order("id desc").Find(&posts)
 	for idx, _ := range posts {
@@ -55,43 +55,88 @@ func GetPosts(c *gin.Context) {
 		posts[idx].PostTags = getPostTags(posts[idx].ID)
 	}
 
-	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
+	if !isAdmin {
 		for i := len(posts)-1; i>=0; i-- {
 			if posts[i].Board.ReadPermission == "JJUNGS" {
 				posts = append(posts[:i], posts[i+1:]...)
 			}
 		}
 	}
-
-	c.JSON(200, gin.H{
-		"data": posts,
-	})
+	return posts
 }
 
-func GetPost(c *gin.Context) {
+func getPostsInBoard(boardID string, isAdmin bool, from int, to int) []Post {
+	var posts []Post
+	database.DB.Where("board_id="+boardID).Order("id desc").Find(&posts)
+	for idx, _ := range posts {
+		posts[idx].Board = new(Board)
+		database.DB.First(&posts[idx].Board, "boards.id=?", posts[idx].BoardID)
+		posts[idx].PostTags = getPostTags(posts[idx].ID)
+	}
+
+	if !isAdmin {
+		for i := len(posts)-1; i>=0; i-- {
+			if posts[i].Board.ReadPermission == "JJUNGS" {
+				posts = append(posts[:i], posts[i+1:]...)
+			}
+		}
+	}
+	return posts
+}
+
+func getPost(postID string) Post {
 	var post Post
-	id := c.Param("id")
-	database.DB.First(&post, "posts.id=?", id)
+	database.DB.Where("id="+postID).First(&post)
 	if post.ID == 0 {
-		c.JSON(200, gin.H{
-			"data": nil,
-		})
-		return
+		return post
 	}
 
 	post.Board = &Board{}
 	database.DB.First(&post.Board, "boards.id=?", post.BoardID)
-	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" && post.Board.ReadPermission == "JJUNGS" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
-		})
-		return
-	}
-	post.PostTags = getPostTags(post.ID)
+	return post
+}
 
-	c.JSON(200, gin.H{
-		"data": post,
-	})
+func GetPosts(c *gin.Context) {
+	permissions, _ := c.Get("permissions")
+	input := c.Param("input")
+	t := c.Query("type")
+	isAdmin := permissions == "JJUNGS"
+	if t == "board" {
+		posts := getPostsInBoard(input, isAdmin, 0, 0)
+		c.JSON(200, gin.H{
+			"data": posts,
+		})
+	} else if t == "post" {
+		post := getPost(input)
+		if !isAdmin && post.Board.ReadPermission == "JJUNGS" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "ERR401",
+			})
+			return
+		}
+
+		if post.ID == 0 {
+			c.JSON(200, gin.H{
+				"data": nil,
+			})
+			return
+		}
+
+		post.PostTags = getPostTags(post.ID)
+		c.JSON(200, gin.H{
+			"data": post,
+		})
+	} else if t == "all" {
+		posts := getAll(isAdmin, 0, 0)
+		c.JSON(200, gin.H{
+			"data": posts,
+		})
+	} else {
+		c.JSON(200, gin.H{
+			"error": "ERR400",
+			"message": "you must specify type(board | post | all) with query string. ex) /post/1?type=board",
+		})
+	}
 }
 
 type PostInput struct {
@@ -142,13 +187,6 @@ func getWellFormedTag(str string) string {
 }
 
 func CreatePost(c *gin.Context) {
-	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
-		})
-		return
-	}
-
 	var input PostInput
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -195,13 +233,6 @@ func CreatePost(c *gin.Context) {
 }
 
 func UpdatePost(c *gin.Context) {
-	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
-		})
-		return
-	}
-
 	var input PostInput
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -252,13 +283,6 @@ func UpdatePost(c *gin.Context) {
 }
 
 func DeletePost(c *gin.Context) {
-	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
-		})
-		return
-	}
-
 	var postInput PostInput
 	if err := binding.JSON.Bind(c.Request, &postInput); err != nil {
 		fmt.Println(err)

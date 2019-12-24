@@ -7,9 +7,5 @@ import (
 )
 
 func PostRegister(router *gin.RouterGroup) {
-	router.GET("", models.GetPosts)
-	router.GET("/:id", models.GetPost)
-	router.POST("", models.CreatePost)
-	router.PUT("", models.UpdatePost)
-	router.DELETE("", models.DeletePost)
+	router.GET("/:input", models.GetPosts)
 }

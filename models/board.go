@@ -24,7 +24,7 @@ type Board struct {
 func GetBoards(c *gin.Context) {
 	var whereClause = ""
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		whereClause = " read_permission <> 'JJUNGS'"
+		whereClause = "read_permission <> 'JJUNGS'"
 	}
 
 	var boards []Board
@@ -35,29 +35,24 @@ func GetBoards(c *gin.Context) {
 }
 
 func GetBoard(c *gin.Context) {
-	type Posts struct {
-		Board Board
-		Posts []Post
-	}
+	var board Board
 
 	var whereClause = ""
 	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
 		whereClause = " and read_permission <> 'JJUNGS'"
 	}
 
-	var posts Posts
-	name := c.Param("name")
-	database.DB.First(&posts.Board, "boards.url='" + name + "'" + whereClause)
-	if posts.Board.Name == "" {
+	url := c.Param("url")
+	database.DB.First(&board, "boards.url='" + url + "'" + whereClause)
+	if board.Name == "" {
 		c.JSON(200, gin.H{
 			"data": nil,
 		})
 		return
 	}
 
-	database.DB.Order("id desc").Find(&posts.Posts, "posts.board_id=?", posts.Board.ID)
 	c.JSON(200, gin.H{
-		"data": posts,
+		"data": board,
 	})
 }
 
@@ -69,13 +64,6 @@ type BoardInput struct {
 }
 
 func CreateBoard(c *gin.Context) {
-	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
-		})
-		return
-	}
-
 	var input BoardInput
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -113,13 +101,6 @@ func CreateBoard(c *gin.Context) {
 }
 
 func UpdateBoard(c *gin.Context) {
-	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
-		})
-		return
-	}
-
 	var input BoardInput
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		fmt.Println(err)
@@ -164,13 +145,6 @@ func UpdateBoard(c *gin.Context) {
 }
 
 func DeleteBoard(c *gin.Context) {
-	if permissions, _ := c.Get("permissions"); permissions != "JJUNGS" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
-		})
-		return
-	}
-
 	var boardInput BoardInput
 	if err := binding.JSON.Bind(c.Request, &boardInput); err != nil {
 		fmt.Println(err)

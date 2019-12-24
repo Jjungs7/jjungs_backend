@@ -23,7 +23,6 @@ func main() {
 	admin := g.Group("/admin")
 	auth := g.Group("/auth")
 	boards := g.Group("/board")
-	comments := g.Group("/comment")
 	posts := g.Group("/post")
 
 	admin.Use(OnlyAdmin)
@@ -31,7 +30,6 @@ func main() {
 	routes.AdminRegister(admin)
 	routes.AuthRegister(auth)
 	routes.BoardRegister(boards)
-	routes.CommentRegister(comments)
 	routes.PostRegister(posts)
 	g.Run()
 }

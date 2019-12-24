@@ -10,26 +10,57 @@ import (
 	"jjungs_backend/components/auth"
 )
 
-var JjungsPassword string
+var JjungsPW string
 
 type InputPW struct {
 	PW string `json:"pw"`
 }
 
 func AuthRegister(router *gin.RouterGroup) {
-	router.POST("", AuthHandler)
+	router.GET("", ValidateAuth)
+	router.POST("", Authenticate)
 }
 
-func AuthHandler(c *gin.Context) {
-	var input InputPW
+func ValidateAuth(c *gin.Context) {
+	type InputToken struct {
+		Token string `json:"token"`
+	}
+
+	var input InputToken
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
 		})
 		return
 	}
 
-	if input.PW != JjungsPassword {
+	_, err := auth.ValidateToken(input.Token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "ERR401",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": "ok",
+	})
+}
+
+func Authenticate(c *gin.Context) {
+	type InputPW struct {
+		PW string `json:"pw"`
+	}
+
+	var input InputPW
+	if err := binding.JSON.Bind(c.Request, &input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "ERR500",
+		})
+		return
+	}
+
+	if input.PW != JjungsPW {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "ERR401",
 		})
@@ -38,17 +69,17 @@ func AuthHandler(c *gin.Context) {
 
 	token, err := auth.GenerateToken(input.PW)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "ERR500",
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "ERR401",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": token,
+		"data": token,
 	})
 }
 
 func init() {
-	JjungsPassword = os.Getenv("PASSWORD")
+	JjungsPW = os.Getenv("PASSWORD")
 }
