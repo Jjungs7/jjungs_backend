@@ -126,7 +126,7 @@ func GetPosts(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"data": post,
 		})
-	} else if t == "all" {
+	} else if input == "" && t == "" {
 		posts := getAll(isAdmin, 0, 0)
 		c.JSON(200, gin.H{
 			"data": posts,

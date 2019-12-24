@@ -7,5 +7,6 @@ import (
 )
 
 func PostRegister(router *gin.RouterGroup) {
+	router.GET("", models.GetPosts)
 	router.GET("/:input", models.GetPosts)
 }
