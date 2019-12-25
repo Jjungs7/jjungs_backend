@@ -2,8 +2,10 @@ package models
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -18,7 +20,6 @@ type Post struct {
 	ID int `gorm:"primary_key"`
 
 	BoardID int `sql:"index"`
-	Board *Board `gorm:"foreignkey:BoardID;association_foreignkey:ID"`
 	Title string `gorm:"type:varchar(255);not null"`
 	Body string
 	Description string
@@ -34,7 +35,7 @@ type PostTag struct {
 	Keyword string `gorm:"type:varchar(20);unique_index:uix_post_tags_post_id_keyword"`
 }
 
-func getPostTags(PostID int) ([]string) {
+func getPostTags(PostID int) []string {
 	var tags []string
 	rows, _ := database.DB.Table("post_tags").Select("post_tags.keyword").Joins("inner join posts on post_tags.post_id=posts.id").Where("posts.id="+strconv.Itoa(PostID)).Rows()
 	defer rows.Close()
@@ -46,53 +47,61 @@ func getPostTags(PostID int) ([]string) {
 	return tags
 }
 
-func getAll(isAdmin bool, from int, to int) []Post {
+func getAll(isAdmin bool, postID int, after bool) ([]Post, int, int) {
 	var posts []Post
-	database.DB.Order("id desc").Find(&posts)
-	for idx, _ := range posts {
-		posts[idx].Board = new(Board)
-		database.DB.First(&posts[idx].Board, "boards.id=?", posts[idx].BoardID)
-		posts[idx].PostTags = getPostTags(posts[idx].ID)
+	count := 20
+
+	subquery := database.DB.Model(&Post{})
+	if !isAdmin {
+		subquery = subquery.Select("posts.*")
+		subquery = subquery.Joins("inner join boards on posts.board_id=boards.id")
+		subquery = subquery.Where("boards.read_permission <> ?", "JJUNGS")
 	}
 
-	if !isAdmin {
-		for i := len(posts)-1; i>=0; i-- {
-			if posts[i].Board.ReadPermission == "JJUNGS" {
-				posts = append(posts[:i], posts[i+1:]...)
-			}
-		}
+	query := subquery
+	if after {
+		query = query.Where("posts.id>?", postID).Order("posts.id asc")
+	} else {
+		query = query.Where("posts.id<?", postID).Order("posts.id desc")
 	}
-	return posts
+	query.Limit(count).Find(&posts)
+	sort.SliceStable(posts, func(i, j int) bool { return posts[i].ID > posts[j].ID })
+
+	var prev int
+	var next int
+	subquery.Where("posts.id>?", posts[0].ID).Count(&prev)
+	subquery.Where("posts.id<?", posts[len(posts)-1].ID).Count(&next)
+	return posts, prev, next
 }
 
-func getPostsInBoard(boardID string, isAdmin bool, from int, to int) []Post {
+func getPostsInBoard(boardID string, isAdmin bool, postID int, after bool) ([]Post, int, int) {
 	var posts []Post
-	database.DB.Where("board_id="+boardID).Order("id desc").Find(&posts)
-	for idx, _ := range posts {
-		posts[idx].Board = new(Board)
-		database.DB.First(&posts[idx].Board, "boards.id=?", posts[idx].BoardID)
-		posts[idx].PostTags = getPostTags(posts[idx].ID)
+	count := 20
+	board := new(Board)
+	database.DB.Where("boards.id=?", boardID).First(&board)
+	if !isAdmin && board.ReadPermission == "JJUNGS" {
+		return posts, 0, 0
 	}
 
-	if !isAdmin {
-		for i := len(posts)-1; i>=0; i-- {
-			if posts[i].Board.ReadPermission == "JJUNGS" {
-				posts = append(posts[:i], posts[i+1:]...)
-			}
-		}
+	query := database.DB.Where("board_id=?", boardID)
+	if after {
+		query = query.Where("id>?", postID).Order("id asc")
+	} else {
+		query = query.Where("id<?", postID).Order("id desc")
 	}
-	return posts
+	query.Limit(count).Find(&posts)
+	sort.SliceStable(posts, func(i, j int) bool { return posts[i].ID > posts[j].ID })
+
+	var prev int
+	var next int
+	database.DB.Model(&Post{}).Where("board_id=? and id>?", boardID, posts[0].ID).Count(&prev)
+	database.DB.Model(&Post{}).Where("board_id=? and id<?", boardID, posts[len(posts)-1].ID).Count(&next)
+	return posts, prev, next
 }
 
 func getPost(postID string) Post {
 	var post Post
 	database.DB.Where("id="+postID).First(&post)
-	if post.ID == 0 {
-		return post
-	}
-
-	post.Board = &Board{}
-	database.DB.First(&post.Board, "boards.id=?", post.BoardID)
 	return post
 }
 
@@ -100,24 +109,37 @@ func GetPosts(c *gin.Context) {
 	permissions, _ := c.Get("permissions")
 	input := c.Param("input")
 	t := c.Query("type")
+	postID, err := strconv.Atoi(c.Query("postId"))
+	_after := c.Query("after")
+	after := _after == "true"
 	isAdmin := permissions == "JJUNGS"
+	if err != nil {
+		postID = math.MaxInt32
+	}
+
 	if t == "board" {
-		posts := getPostsInBoard(input, isAdmin, 0, 0)
+		posts, prev, next := getPostsInBoard(input, isAdmin, postID, after)
 		c.JSON(200, gin.H{
-			"data": posts,
+			"data": gin.H{
+				"posts": posts,
+				"prevCnt": prev,
+				"nextCnt": next,
+			},
 		})
 	} else if t == "post" {
 		post := getPost(input)
-		if !isAdmin && post.Board.ReadPermission == "JJUNGS" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "ERR401",
+		if post.ID == 0 {
+			c.JSON(200, gin.H{
+				"data": nil,
 			})
 			return
 		}
 
-		if post.ID == 0 {
-			c.JSON(200, gin.H{
-				"data": nil,
+		board := &Board{}
+		database.DB.Where(&Board{ID: post.BoardID}).First(&board)
+		if !isAdmin && board.ReadPermission == "JJUNGS" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "ERR401",
 			})
 			return
 		}
@@ -127,9 +149,13 @@ func GetPosts(c *gin.Context) {
 			"data": post,
 		})
 	} else if input == "" && t == "" {
-		posts := getAll(isAdmin, 0, 0)
+		posts, prev, next := getAll(isAdmin, postID, after)
 		c.JSON(200, gin.H{
-			"data": posts,
+			"data": gin.H{
+				"posts": posts,
+				"prevCnt": prev,
+				"nextCnt": next,
+			},
 		})
 	} else {
 		c.JSON(200, gin.H{
@@ -225,8 +251,6 @@ func CreatePost(c *gin.Context) {
 		insertIgnoreDuplicateTags(post.ID, post.PostTags)
 	}
 
-	post.Board = new(Board)
-	database.DB.First(&post.Board, "boards.id=?", post.BoardID)
 	c.JSON(http.StatusOK, gin.H{
 		"data": post,
 	})
