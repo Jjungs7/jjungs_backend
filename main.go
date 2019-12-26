@@ -15,20 +15,21 @@ func main() {
 	g := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AllowHeaders = []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "Authorization"}
+	config.AllowOrigins = []string{"http://localhost:8080", "https://api.jjungscope.co.kr", "http://api.jjungscope.co.kr"}
+	config.AllowHeaders = []string{"Content-Type", "Authorization"}
+	config.AllowCredentials = true
 	g.Use(cors.New(config))
 	g.Use(PreHandler)
 
 	admin := g.Group("/admin")
-	auth := g.Group("/auth")
+	authRoute := g.Group("/auth")
 	boards := g.Group("/board")
 	posts := g.Group("/post")
 
 	admin.Use(OnlyAdmin)
 
 	routes.AdminRegister(admin)
-	routes.AuthRegister(auth)
+	routes.AuthRegister(authRoute)
 	routes.BoardRegister(boards)
 	routes.PostRegister(posts)
 	g.Run()

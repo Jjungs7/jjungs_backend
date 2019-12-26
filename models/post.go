@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/jinzhu/gorm"
 
 	"jjungs_backend/components/database"
 )
@@ -24,6 +25,7 @@ type Post struct {
 	Body string
 	Description string
 	PostTags []string `gorm:"-"`
+	Hits int `gorm:"default:0"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -65,8 +67,11 @@ func getAll(isAdmin bool, postID int, after bool) ([]Post, int, int) {
 		query = query.Where("posts.id<?", postID).Order("posts.id desc")
 	}
 	query.Limit(count).Find(&posts)
-	sort.SliceStable(posts, func(i, j int) bool { return posts[i].ID > posts[j].ID })
+	if len(posts) <= 0 {
+		return posts, 0, 0
+	}
 
+	sort.SliceStable(posts, func(i, j int) bool { return posts[i].ID > posts[j].ID })
 	var prev int
 	var next int
 	subquery.Where("posts.id>?", posts[0].ID).Count(&prev)
@@ -90,8 +95,11 @@ func getPostsInBoard(boardID string, isAdmin bool, postID int, after bool) ([]Po
 		query = query.Where("id<?", postID).Order("id desc")
 	}
 	query.Limit(count).Find(&posts)
-	sort.SliceStable(posts, func(i, j int) bool { return posts[i].ID > posts[j].ID })
+	if len(posts) <= 0 {
+		return posts, 0, 0
+	}
 
+	sort.SliceStable(posts, func(i, j int) bool { return posts[i].ID > posts[j].ID })
 	var prev int
 	var next int
 	database.DB.Model(&Post{}).Where("board_id=? and id>?", boardID, posts[0].ID).Count(&prev)
@@ -143,6 +151,17 @@ func GetPosts(c *gin.Context) {
 			})
 			return
 		}
+
+		// Update hits before response
+		cookieName := "last_hit_"+strconv.Itoa(post.ID)
+		cookie, err1 := c.Cookie(cookieName)
+		if err1 != nil {
+			database.DB.Model(&post).UpdateColumn("hits", gorm.Expr("hits+1"))
+			post.Hits++
+		} else {
+			fmt.Println(cookie)
+		}
+		c.SetCookie(cookieName, "hit", 600, "/", "", false, false)
 
 		post.PostTags = getPostTags(post.ID)
 		c.JSON(200, gin.H{
