@@ -23,5 +23,4 @@ func init() {
 		panic(err)
 	}
 	DB = _DB
-	DB.LogMode(true)  // TODO: erase
 }

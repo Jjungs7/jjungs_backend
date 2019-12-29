@@ -49,7 +49,7 @@ func getPostTags(PostID int) []string {
 	return tags
 }
 
-func getAll(isAdmin bool, postID int, after bool) ([]Post, int, int) {
+func getAll(isAdmin bool, postID int, before bool) ([]Post, int, int) {
 	var posts []Post
 	count := 20
 
@@ -61,7 +61,7 @@ func getAll(isAdmin bool, postID int, after bool) ([]Post, int, int) {
 	}
 
 	query := subquery
-	if after {
+	if before {
 		query = query.Where("posts.id>?", postID).Order("posts.id asc")
 	} else {
 		query = query.Where("posts.id<?", postID).Order("posts.id desc")
@@ -79,7 +79,7 @@ func getAll(isAdmin bool, postID int, after bool) ([]Post, int, int) {
 	return posts, prev, next
 }
 
-func getPostsInBoard(boardID string, isAdmin bool, postID int, after bool) ([]Post, int, int) {
+func getPostsInBoard(boardID string, isAdmin bool, postID int, before bool) ([]Post, int, int) {
 	var posts []Post
 	count := 20
 	board := new(Board)
@@ -89,7 +89,7 @@ func getPostsInBoard(boardID string, isAdmin bool, postID int, after bool) ([]Po
 	}
 
 	query := database.DB.Where("board_id=?", boardID)
-	if after {
+	if before {
 		query = query.Where("id>?", postID).Order("id asc")
 	} else {
 		query = query.Where("id<?", postID).Order("id desc")
@@ -118,15 +118,22 @@ func GetPosts(c *gin.Context) {
 	input := c.Param("input")
 	t := c.Query("type")
 	postID, err := strconv.Atoi(c.Query("postId"))
-	_after := c.Query("after")
-	after := _after == "true"
+	_before := c.Query("before")
+	before := _before == "true"
 	isAdmin := permissions == "JJUNGS"
 	if err != nil {
 		postID = math.MaxInt32
 	}
 
 	if t == "board" {
-		posts, prev, next := getPostsInBoard(input, isAdmin, postID, after)
+		var posts []Post
+		var prev int
+		var next int
+		if input == "0" {
+			posts, prev, next = getAll(isAdmin, postID, before)
+		} else {
+			posts, prev, next = getPostsInBoard(input, isAdmin, postID, before)
+		}
 		c.JSON(200, gin.H{
 			"data": gin.H{
 				"posts": posts,
@@ -166,15 +173,6 @@ func GetPosts(c *gin.Context) {
 		post.PostTags = getPostTags(post.ID)
 		c.JSON(200, gin.H{
 			"data": post,
-		})
-	} else if input == "" && t == "" {
-		posts, prev, next := getAll(isAdmin, postID, after)
-		c.JSON(200, gin.H{
-			"data": gin.H{
-				"posts": posts,
-				"prevCnt": prev,
-				"nextCnt": next,
-			},
 		})
 	} else {
 		c.JSON(200, gin.H{

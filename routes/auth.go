@@ -17,7 +17,7 @@ type InputPW struct {
 }
 
 func AuthRegister(router *gin.RouterGroup) {
-	router.GET("", ValidateAuth)
+	router.POST("/val", ValidateAuth)
 	router.POST("", Authenticate)
 }
 
@@ -36,8 +36,8 @@ func ValidateAuth(c *gin.Context) {
 
 	_, err := auth.ValidateToken(input.Token)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
+		c.JSON(http.StatusOK, gin.H{
+			"error": "TKN001",
 		})
 		return
 	}
@@ -61,16 +61,16 @@ func Authenticate(c *gin.Context) {
 	}
 
 	if input.PW != JjungsPW {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
+		c.JSON(http.StatusOK, gin.H{
+			"error": "TKN000",
 		})
 		return
 	}
 
 	token, err := auth.GenerateToken(input.PW)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "ERR401",
+		c.JSON(http.StatusOK, gin.H{
+			"error": "TKN000",
 		})
 		return
 	}

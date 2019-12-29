@@ -8,5 +8,5 @@ import (
 
 func BoardRegister(router *gin.RouterGroup) {
 	router.GET("", models.GetBoards)
-	router.GET("/:url", models.GetBoard)
+	router.GET("/:boardID", models.GetBoard)
 }

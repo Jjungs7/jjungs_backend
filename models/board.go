@@ -16,6 +16,7 @@ type Board struct {
 	Name string `gorm:"type:varchar(40);UNIQUE_INDEX;not null"`
 	URL string `gorm:"type:varchar(40);UNIQUE_INDEX;not null"`
 	ReadPermission string `gorm:"type:varchar(20);not null"`
+	Order int `gorm:"INDEX"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -28,7 +29,7 @@ func GetBoards(c *gin.Context) {
 	}
 
 	var boards []Board
-	database.DB.Order("id asc").Find(&boards, whereClause)
+	database.DB.Order("\"order\", id").Find(&boards, whereClause)
 	c.JSON(200, gin.H{
 		"data": boards,
 	})
@@ -42,8 +43,8 @@ func GetBoard(c *gin.Context) {
 		whereClause = " and read_permission <> 'JJUNGS'"
 	}
 
-	url := c.Param("url")
-	database.DB.First(&board, "boards.url='" + url + "'" + whereClause)
+	boardID := c.Param("boardID")
+	database.DB.First(&board, "boards.id=" + boardID + whereClause)
 	if board.Name == "" {
 		c.JSON(200, gin.H{
 			"data": nil,
