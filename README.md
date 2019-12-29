@@ -1,7 +1,33 @@
 # jjungs_backend
-_2019년도 12월 안으로는 꼭 완성합니다_
+완성?!
 
-1. .envrc.ex을 복사하고 파일명을 .envrc로 바꿉니다
-2. .envrc에 적절히 값을 넣어줍니다
-3. `go build main.go` 로 컴파일합니다
-4. `./main`
+### 환경변수 설정
+*.envrc.ex*을 복사하고 파일명을 *.envrc*로 바꿉니다. 그리고 *.envrc*에 적절히 값을 넣어줍니다
+[direnv](https://direnv.net/)를 사용하면 편리하게 환경변수를 설정할 수 있습니
+``` bash
+cp .envrc.ex .envrc
+vim .envrc
+# Change env variables
+
+direnv allow
+```
+
+### 실행
+``` bash
+# install dependencies
+go mod tidy
+
+# run
+# needs postgresql running on background
+go build -o main main.go
+./main
+```
+
+### 배포
+``` bash
+# Build
+docker build -t equisde/jjungs:(version) .
+
+# Run
+docker run --rm --name jjungs-api [ -e [env var1] -e [env var2] ... ] -p 8080:8080 equisde/jjungs:(version)
+```
