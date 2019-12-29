@@ -15,7 +15,7 @@ func main() {
 	g := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:8080", "https://api.jjungscope.co.kr", "http://api.jjungscope.co.kr"}
+	config.AllowOrigins = []string{"http://localhost:8080", "http://jjungs.kr", "https://jjungs.kr"}
 	config.AllowHeaders = []string{"Content-Type", "Authorization"}
 	config.AllowCredentials = true
 	g.Use(cors.New(config))
