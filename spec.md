@@ -8,12 +8,17 @@
 ## API 목록
 | 메소드 | 경로 | 설명 | 파라미터 |
 | --- | --- | --- | --- |
-| GET | /auth | JJUNGS 권한 인증 | [ pw:string ] |
-| GET | /board | JJUNGS 권한 인증 | [ pw:string ] |
-| GET | /board/:url | JJUNGS 권한 인증 | [ pw:string ] |
-| GET | /auth | JJUNGS 권한 인증 | [ pw:string ] |
-| GET | /auth | JJUNGS 권한 인증 | [ pw:string ] |
-| GET | /auth | JJUNGS 권한 인증 | [ pw:string ] |
+| GET | /board | 모든 게시판 정보 가져오기 | - |
+| GET | /board/:boardID | boardID에 해당하는 게시판 정보 가져오기 | - |
+| GET | /post/:input | 게시판, 게시물 또는 게시판의 모든 게시물 정보 가져오기 | { type: [ "board" | "post" ] , postId: int, before?: "true" } |
+| POST | /auth | JJUNGS 권한 인증 | { pw:string } |
+| POST | /auth/val | 권한 확인 | { token:string } |
+| POST | /admin/board | 게시판 생성 | { name: string, url: string, read: string } |
+| POST | /admin/post | 게시물 생성 | { boardId: int, title: string, body?: string, tags?: string, description?: string } |
+| PUT | /admin/board | 게시판 수정 | { id: int, name: string, url: string, read: string } |
+| PUT | /admin/post | 게시물 수정 | { id: int, boardId: int, title: string, body: string, tags: string, description: string } |
+| DELETE | /admin/board | 게시판 삭제 | { id: int } |
+| DELETE | /admin/post | 게시물 삭제 | { id: int } |
 
 ## 오류
 ### 에러 코드

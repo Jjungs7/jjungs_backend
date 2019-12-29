@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -69,8 +68,8 @@ func CreateBoard(c *gin.Context) {
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
+			"message": err,
 		})
-		fmt.Println(err)
 		return
 	}
 
@@ -91,8 +90,8 @@ func CreateBoard(c *gin.Context) {
 	if len(errs) > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+			"message": errs[0],
 		})
-		fmt.Println(errs)
 		return
 	}
 
@@ -104,9 +103,9 @@ func CreateBoard(c *gin.Context) {
 func UpdateBoard(c *gin.Context) {
 	var input BoardInput
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+			"message": err,
 		})
 		return
 	}
@@ -134,9 +133,9 @@ func UpdateBoard(c *gin.Context) {
 
 	errs := database.DB.Save(&board).GetErrors()
 	if len(errs) > 0 {
-		fmt.Println(errs)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+			"message": errs[0],
 		})
 		return
 	}
@@ -148,9 +147,9 @@ func UpdateBoard(c *gin.Context) {
 func DeleteBoard(c *gin.Context) {
 	var boardInput BoardInput
 	if err := binding.JSON.Bind(c.Request, &boardInput); err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+			"message": err,
 		})
 		return
 	}
@@ -164,9 +163,9 @@ func DeleteBoard(c *gin.Context) {
 
 	errs := database.DB.Delete(&Board{ID: boardInput.ID}).GetErrors()
 	if len(errs) > 0 {
-		fmt.Println(errs)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
+			"message": errs[0],
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{

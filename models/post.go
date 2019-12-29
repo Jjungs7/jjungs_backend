@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"math"
 	"net/http"
 	"regexp"
@@ -161,12 +160,10 @@ func GetPosts(c *gin.Context) {
 
 		// Update hits before response
 		cookieName := "last_hit_"+strconv.Itoa(post.ID)
-		cookie, err1 := c.Cookie(cookieName)
+		_, err1 := c.Cookie(cookieName)
 		if err1 != nil {
 			database.DB.Model(&post).UpdateColumn("hits", gorm.Expr("hits+1"))
 			post.Hits++
-		} else {
-			fmt.Println(cookie)
 		}
 		c.SetCookie(cookieName, "hit", 600, "/", "", false, false)
 
@@ -234,9 +231,8 @@ func CreatePost(c *gin.Context) {
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
+			"message": err,
 		})
-		fmt.Println(input)
-		fmt.Println(err)
 		return
 	}
 
@@ -258,8 +254,8 @@ func CreatePost(c *gin.Context) {
 	if len(errs) > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+			"message": errs[0],
 		})
-		fmt.Println(errs)
 		return
 	}
 
@@ -278,8 +274,8 @@ func UpdatePost(c *gin.Context) {
 	if err := binding.JSON.Bind(c.Request, &input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
+			"message": err,
 		})
-		fmt.Println(err)
 		return
 	}
 
@@ -314,8 +310,8 @@ func UpdatePost(c *gin.Context) {
 	if len(errs) > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+			"message": errs[0],
 		})
-		fmt.Println(errs)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -326,9 +322,9 @@ func UpdatePost(c *gin.Context) {
 func DeletePost(c *gin.Context) {
 	var postInput PostInput
 	if err := binding.JSON.Bind(c.Request, &postInput); err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
+			"message": err,
 		})
 		return
 	}
@@ -342,9 +338,9 @@ func DeletePost(c *gin.Context) {
 
 	errs := database.DB.Delete(&Post{ID: postInput.ID}).GetErrors()
 	if len(errs) > 0 {
-		fmt.Println(errs)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ERR500",
+			"message": errs[0],
 		})
 		return
 	}
