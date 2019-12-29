@@ -161,7 +161,7 @@ func GetPosts(c *gin.Context) {
 		// Update hits before response
 		cookieName := "last_hit_"+strconv.Itoa(post.ID)
 		_, err1 := c.Cookie(cookieName)
-		if err1 != nil {
+		if err1 != nil && !isAdmin {
 			database.DB.Model(&post).UpdateColumn("hits", gorm.Expr("hits+1"))
 			post.Hits++
 		}

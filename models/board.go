@@ -111,7 +111,7 @@ func UpdateBoard(c *gin.Context) {
 	}
 
 	var board Board
-	database.DB.First(&board, Board{ID: input.ID})
+	database.DB.First(&board, &Board{ID: input.ID})
 	if board.ID <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
