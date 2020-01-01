@@ -51,7 +51,7 @@ func GetFile(c *gin.Context) {
 	if _, err := os.Stat(fileName); os.IsNotExist(err) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "ERR400",
-			"message": err,
+			"message": "file not found",
 		})
 		return
 	}
@@ -89,7 +89,7 @@ func UploadFile(c *gin.Context) {
 
 	if err := c.SaveUploadedFile(file, fileName); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "ERR404",
+			"error": "ERR400",
 			"message": "incorrect file or filename. Check if file exceeds 32MiB",
 		})
 		return

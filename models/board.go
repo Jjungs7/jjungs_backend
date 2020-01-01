@@ -59,6 +59,7 @@ func GetBoard(c *gin.Context) {
 type BoardInput struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
+	Order int `json:"order"`
 	URL string `json:"url"`
 	ReadPermission string `json:"read"`
 }
@@ -76,6 +77,7 @@ func CreateBoard(c *gin.Context) {
 	board := Board{
 		Name: input.Name,
 		URL: input.URL,
+		Order: input.Order,
 		ReadPermission: input.ReadPermission,
 	}
 
@@ -121,6 +123,10 @@ func UpdateBoard(c *gin.Context) {
 
 	if input.Name != "" {
 		board.Name = input.Name
+	}
+
+	if input.Order > 0 {
+		board.Order = input.Order
 	}
 
 	if input.URL != "" {
