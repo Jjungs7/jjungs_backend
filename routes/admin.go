@@ -14,4 +14,8 @@ func AdminRegister(router *gin.RouterGroup) {
 	router.POST("/board", models.CreateBoard)
 	router.PUT("/board", models.UpdateBoard)
 	router.DELETE("/board", models.DeleteBoard)
+
+	router.GET("/file", models.GetFileNames)
+	router.POST("/file/:name", models.UploadFile)
+	router.DELETE("/file", models.RemoveFile)
 }

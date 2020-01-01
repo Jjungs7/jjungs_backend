@@ -25,6 +25,7 @@ func main() {
 	authRoute := g.Group("/auth")
 	boards := g.Group("/board")
 	posts := g.Group("/post")
+	files := g.Group("/file")
 
 	admin.Use(OnlyAdmin)
 
@@ -32,6 +33,7 @@ func main() {
 	routes.AuthRegister(authRoute)
 	routes.BoardRegister(boards)
 	routes.PostRegister(posts)
+	routes.FileRegister(files)
 	g.Run()
 }
 

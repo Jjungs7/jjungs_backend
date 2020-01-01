@@ -9,6 +9,7 @@ func init() {
 		&Board{},
 		&Post{},
 		&PostTag{},
+		&File{},
 	)
 
 	database.DB.Model(&Post{}).AddForeignKey("board_id", "boards(id)", "CASCADE", "CASCADE")

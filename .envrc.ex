@@ -1,3 +1,5 @@
+export FILES_DIR=example_file_dir
+
 export SECRET=example_secret
 export PASSWORD=example_password
 
