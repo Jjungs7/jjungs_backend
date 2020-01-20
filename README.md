@@ -1,4 +1,4 @@
-# jjungs_backend
+# jjungs_backend [![travis build status](https://travis-ci.com/Jjungs7/jjungs_backend.svg?token=HqXpQvLubk2CGuZGBKfS&branch=master)](https://travis-ci.com/Jjungs7/jjungs_backend/builds)
 완성?!
 
 ### 환경변수 설정
