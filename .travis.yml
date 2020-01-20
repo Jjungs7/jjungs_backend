@@ -1,0 +1,22 @@
+language: go
+go:
+  - 1.13
+
+services:
+  - docker
+
+script:
+  - if [ -n "${TRAVIS_TAG}" ]; then
+      docker build -t equisde/jjungs-api:${TRAVIS_TAG} .;
+    else
+      docker build -t equisde/jjungs-api:latest .;
+    fi
+
+after_success:
+  - docker login -u "$DOCKER_USER" -p "$DOCKER_PW"
+  - if [ -n "${TRAVIS_TAG}" ]; then
+      docker push equisde/jjungs-api:${TRAVIS_TAG};
+    else
+      docker push equisde/jjungs-api:latest;
+    fi
+
