@@ -300,6 +300,10 @@ func UpdatePost(c *gin.Context) {
 		post.Body = input.Body
 	}
 
+	if input.Description != "" {
+		post.Description = input.Description
+	}
+
 	if input.Tags != "" {
 		post.PostTags = strings.Split(getWellFormedTag(input.Tags), " ")
 		deleteTagsExcluding(post.ID, post.PostTags)
