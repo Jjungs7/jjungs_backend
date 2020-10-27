@@ -21,7 +21,7 @@ func GenerateToken(password string) (string, error) {
 		jwt.StandardClaims {
 			Issuer:    "jjungs",
 			IssuedAt:  time.Now().Unix(),
-			ExpiresAt: time.Now().Add(time.Hour*1 + time.Minute*30).Unix(),
+			ExpiresAt: time.Now().Add(time.Hour*6 + time.Minute*0).Unix(),
 		},
 	}
 
